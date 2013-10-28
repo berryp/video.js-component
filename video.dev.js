@@ -873,7 +873,7 @@ vjs.IS_OLD_ANDROID = vjs.IS_ANDROID && (/webkit/i).test(vjs.USER_AGENT) && vjs.A
 vjs.IS_FIREFOX = (/Firefox/i).test(vjs.USER_AGENT);
 vjs.IS_CHROME = (/Chrome/i).test(vjs.USER_AGENT);
 
-vjs.TOUCH_ENABLED = ('ontouchstart' in window);
+vjs.TOUCH_ENABLED = !!(('ontouchstart' in window) || window.DocumentTouch && document instanceof window.DocumentTouch);
 
 /**
  * Get an element's attribute values, as defined on the HTML tag
@@ -3164,6 +3164,8 @@ vjs.Player.prototype.src = function(source){
       this.el_.appendChild(vjs.createEl('p', {
         innerHTML: this.options()['notSupportedMessage']
       }));
+      // There's no point displaying controls if there's nothing to play.
+      this.controls(false);
     }
 
   // Case: Source object { src: '', type: '' ... }
@@ -3357,10 +3359,12 @@ vjs.Player.prototype.userActive = function(bool){
         //
         // When this gets resolved in ALL browsers it can be removed
         // https://code.google.com/p/chromium/issues/detail?id=103041
-        this.tech.one('mousemove', function(e){
-          e.stopPropagation();
-          e.preventDefault();
-        });
+        if (this.tech) {
+            this.tech.one('mousemove', function(e){
+              e.stopPropagation();
+              e.preventDefault();
+            });
+        }
         this.removeClass('vjs-user-active');
         this.addClass('vjs-user-inactive');
         this.trigger('userinactive');
@@ -4016,6 +4020,10 @@ vjs.VolumeBar.prototype.createEl = function(){
 };
 
 vjs.VolumeBar.prototype.onMouseMove = function(event) {
+  if (this.player_.muted()) {
+    this.player_.muted(false);
+  }
+
   this.player_.volume(this.calculateDistance(event));
 };
 
@@ -4290,7 +4298,7 @@ vjs.BigPlayButton = vjs.Button.extend();
 vjs.BigPlayButton.prototype.createEl = function(){
   return vjs.Button.prototype.createEl.call(this, 'div', {
     className: 'vjs-big-play-button',
-    innerHTML: '<span></span>',
+    innerHTML: '<span aria-hidden="true"></span>',
     'aria-label': 'play video'
   });
 };
